@@ -1,13 +1,23 @@
-#-*- coding: UTF-8 -*-
+# -*- coding: UTF-8 -*-
 import hashlib
-import urllib
-from urllib import parse
-import urllib.request
-import base64
-import json
-import time
 
-url_preffix='https://api.ai.qq.com/fcgi-bin/'
+from urllib import parse
+
+import base64
+
+import json
+
+from tencentcloud.iai.v20180301 import iai_client
+
+from tencentcloud.common.profile.client_profile import ClientProfile
+from tencentcloud.iai.v20180301 import models
+
+from tencentcloud.common import credential
+from tencentcloud.common.profile.http_profile import HttpProfile
+
+
+
+url_preffix = "iai.tencentcloudapi.com"
 
 
 def setParams(array, key, value):
@@ -34,27 +44,47 @@ class AiPlat(object):
         self.url_data = ''
 
     def invoke(self, params):
-        self.url_data = urllib.parse.urlencode(params).encode("utf-8")
-        req = urllib.request.Request(self.url, self.url_data)
         try:
-            rsp = urllib.request.urlopen(req)
-            str_rsp = rsp.read().decode('utf-8')
-            dict_rsp = json.loads(str_rsp)
-            return dict_rsp
+
+            cred = credential.Credential(self.app_id, self.app_key)
+            # 实例化一个http选项，可选的，没有特殊需求可以跳过
+            httpProfile = HttpProfile()
+            httpProfile.endpoint = "iai.tencentcloudapi.com"
+
+            # 实例化一个client选项，可选的，没有特殊需求可以跳过
+            clientProfile = ClientProfile()
+            clientProfile.httpProfile = httpProfile
+            # 实例化要请求产品的client对象,clientProfile是可选的
+            client = iai_client.IaiClient(cred, "", clientProfile)
+
+            # 识别图片
+            req = models.DetectFaceRequest()
+            image_data = base64.b64encode(self.data["image"]).decode("utf-8")
+
+            params = {
+                "Image": image_data,
+                "NeedFaceAttributes": 1
+            }
+            req.from_json_string(json.dumps(params))
+
+            # 返回的resp是一个DetectFaceResponse的实例，与请求对象对应
+            resp = client.DetectFace(req)
+
+            resp_dict = json.loads(resp.to_json_string())
+            resp_dict["ret"] = 0
+            return resp_dict
         except Exception as e:
             print(e)
             return {'ret': -1}
 
-    def face_detectface(self, image, mode):
-        self.url = url_preffix + 'face/face_detectface'
+    def face_detectface(self,image):
+
+        self.url = url_preffix
         setParams(self.data, 'app_id', self.app_id)
         setParams(self.data, 'app_key', self.app_key)
-        setParams(self.data, 'mode', mode)
-        setParams(self.data, 'time_stamp', int(time.time()))
-        setParams(self.data, 'nonce_str', int(time.time()))
-        image_data = base64.b64encode(image)
-        setParams(self.data, 'image', image_data.decode("utf-8"))
-        sign_str = genSignString(self.data)
-        setParams(self.data, 'sign', sign_str)
+
+        image_data = base64.b64encode(image).decode("utf-8")
+        setParams(self.data, 'image', image)
+
         return self.invoke(self.data)
 

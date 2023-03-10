@@ -2,6 +2,8 @@
 import sys
 import random
 import time
+from uuid import uuid1
+
 from PIL import Image
 import argparse
 
@@ -21,10 +23,9 @@ except Exception as ex:
 
 VERSION = "0.0.1"
 
-# 我申请的 Key，随便用，嘻嘻嘻
 # 申请地址 http://ai.qq.com
-AppID = '1106858595'
-AppKey = 'bNUNgOpY6AeeJjFu'
+AppID = 'xxx'
+AppKey = 'xxx'
 
 DEBUG_SWITCH = True
 FACE_PATH = 'face/'
@@ -72,7 +73,7 @@ def next_page():
     """
     cmd = 'shell input swipe {x1} {y1} {x2} {y2} {duration}'.format(
         x1=config['center_point']['x'],
-        y1=config['center_point']['y']+config['center_point']['ry'],
+        y1=config['center_point']['y'] + config['center_point']['ry'],
         x2=config['center_point']['x'],
         y2=config['center_point']['y'],
         duration=200
@@ -116,16 +117,15 @@ def tap(x, y):
 
 
 def auto_reply():
-
     msg = "垆边人似月，皓腕凝霜雪。就在刚刚，我的心动了一下，小姐姐你好可爱呀_Powered_By_Python"
 
     # 点击右侧评论按钮
     tap(config['comment_bottom']['x'], config['comment_bottom']['y'])
     time.sleep(1)
-    #弹出评论列表后点击输入评论框
+    # 弹出评论列表后点击输入评论框
     tap(config['comment_text']['x'], config['comment_text']['y'])
     time.sleep(1)
-    #输入上面msg内容 ，注意要使用ADB keyboard  否则不能自动输入，参考： https://www.jianshu.com/p/2267adf15595
+    # 输入上面msg内容 ，注意要使用ADB keyboard  否则不能自动输入，参考： https://www.jianshu.com/p/2267adf15595
     cmd = 'shell am broadcast -a ADB_INPUT_TEXT --es msg {text}'.format(text=msg)
     adb.run(cmd)
     time.sleep(1)
@@ -151,6 +151,7 @@ def main():
     main
     :return:
     """
+    global forMat
     print('程序版本号：{}'.format(VERSION))
     print('激活窗口并按 CONTROL + C 组合键退出')
     debug.dump_device_info()
@@ -164,37 +165,41 @@ def main():
         time.sleep(1)
         screenshot.pull_screenshot()
 
-        resize_image('autojump.png', 'optimized.png', 1024*1024)
+        resize_image('autojump.png', 'optimized.png', 1024 * 1024)
 
         with open('optimized.png', 'rb') as bin_data:
             image_data = bin_data.read()
 
         ai_obj = apiutil.AiPlat(AppID, AppKey)
-        rsp = ai_obj.face_detectface(image_data, 0)
+        rsp = ai_obj.face_detectface(image_data)
 
         major_total = 0
         minor_total = 0
 
         if rsp['ret'] == 0:
             beauty = 0
-            for face in rsp['data']['face_list']:
+
+            for s in rsp["FaceInfos"]:
+                face = s["FaceAttributesInfo"]
+
+                print(face)
 
                 msg_log = '[INFO] gender: {gender} age: {age} expression: {expression} beauty: {beauty}'.format(
-                    gender=face['gender'],
-                    age=face['age'],
-                    expression=face['expression'],
-                    beauty=face['beauty'],
+                    gender=face['Gender'],
+                    age=face['Age'],
+                    expression=face['Expression'],
+                    beauty=face['Beauty'],
                 )
                 print(msg_log)
-                face_area = (face['x'], face['y'], face['x']+face['width'], face['y']+face['height'])
+                face_area = (s['X'], s['Y'], s['X'] + s['Width'], s['Y'] + s['Height'])
                 img = Image.open("optimized.png")
                 cropped_img = img.crop(face_area).convert('RGB')
-                cropped_img.save(FACE_PATH + face['face_id'] + '.png')
+                cropped_img.save(FACE_PATH + uuid1().__str__() + '.png')
                 # 性别判断
-                if face['beauty'] > beauty and face['gender'] < 50:
-                    beauty = face['beauty']
+                if face['Beauty'] > beauty and face['Gender'] < 50:
+                    beauty = face['Beauty']
 
-                if face['age'] > GIRL_MIN_AGE:
+                if face['Age'] > GIRL_MIN_AGE:
                     major_total += 1
                 else:
                     minor_total += 1
