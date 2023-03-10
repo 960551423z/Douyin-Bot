@@ -24,8 +24,8 @@ except Exception as ex:
 VERSION = "0.0.1"
 
 # 申请地址 http://ai.qq.com
-AppID = 'xxx'
-AppKey = 'xxx'
+AppID = ''
+AppKey = ''
 
 DEBUG_SWITCH = True
 FACE_PATH = 'face/'
